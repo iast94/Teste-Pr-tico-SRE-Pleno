@@ -5,6 +5,8 @@ WORKDIR /app
 
 # Copia apenas arquivos de dependências para aproveitar o cache de camadas
 COPY package.json yarn.lock* ./
+
+# Força o Yarn a instalar as versões exatas listadas no yarn.lock
 RUN yarn install --frozen-lockfile
 
 # Copia o restante do código e gera o build (TypeScript -> JS)
