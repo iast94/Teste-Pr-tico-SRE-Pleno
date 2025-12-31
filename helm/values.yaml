@@ -1,12 +1,31 @@
-# Configurações globais da aplicação
+namespace: sre-test
 replicaCount: 2
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
 
 image:
   repository: registry.iximiuz.com/sre-app
   pullPolicy: IfNotPresent
   tag: "v1"
 
-# Definição de recursos conforme página 3 do PDF
+securityContext:
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+service:
+  port: 8080
+
+probes:
+  liveness:
+    path: /health
+  readiness:
+    path: /ready
+
 resources:
   requests:
     cpu: 100m
@@ -15,19 +34,22 @@ resources:
     cpu: 200m
     memory: 256Mi
 
-# Configurações de HPA (Requisito: Tarefa 2)
+# Configuração de Topology Spread Constraints (Baseado no seu projeto GitHub)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: "kubernetes.io/hostname"
+    whenUnsatisfiable: DoNotSchedule # Garante que os pods fiquem em nós diferentes
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: my-app
+
 hpa:
   enabled: true
   minReplicas: 2
   maxReplicas: 10
-  targetCPU: 70    # Requisito PDF: 70%
-  targetMemory: 75 # Requisito PDF: 75%
+  targetCPU: 70
+  targetMemory: 75
 
-# Configurações de PDB (Conhecimento Sênior)
-pdb:
-  enabled: true
-  minAvailable: 1
-
-# Variáveis de ambiente (Requisito: Tarefa 2)
 env:
   APP_ENV: staging
+  configMapKey: APP_ENV
