@@ -8,14 +8,15 @@ Este projeto utiliza automação total. Para implantar a solução:
 3. **Monitoramento:** O pipeline fará o build, push e deploy via Helm automaticamente no cluster configurado.
 
 ## 🏗 Arquitetura
-A solução consiste em uma aplicação Node.js containerizada, rodando em um cluster Kubernetes (k3s) com auto-scaling (HPA), monitoramento via Prometheus/Grafana e agregação de logs via ELK Stack.
+A solução consiste em uma aplicação Node.js containerizada, rodando em um cluster Kubernetes ((**k3s**) gerenciado via **k3d**. A arquitetura inclui suporte para auto-scaling (HPA), monitoramento via Prometheus/Grafana e agregação de logs via ELK Stack.
 
-## ⚖️ Por que k3s? (Decisão de Infraestrutura)
-Diferente de ferramentas como **Kind** (Kubernetes in Docker) ou **Minikube**, a escolha pelo **k3s** para este projeto baseia-se em:
+## ⚖️ Por que k3d/k3s? (Decisão de Infraestrutura)
+Diferente de ferramentas como **Kind** (Kubernetes in Docker) ou **Minikube**, a escolha pelo **k3d/k3s** para este projeto baseia-se em:
 
-* **Leveza e Performance:** O k3s é um binário único de < 100MB que consome significativamente menos memória RAM que o Minikube, sendo ideal para ambientes de SRE/DevOps efêmeros.
+* **Leveza e Performance:** O k3s é um binário único de < 100MB que consome significativamente menos memória RAM que o Minikube, sendo ideal para ambientes de efêmeros e execuções via Self-hosted Runners.
 * **Pronto para Produção:** Enquanto o Kind é focado estritamente em testes locais de CI, o k3s é uma distribuição certificada pela CNCF pronta para uso em produção, o que aproxima este laboratório de um cenário real.
-* **Simplicidade Operacional:** O k3s remove drivers legados e cloud providers desnecessários, mas mantém suporte total a Helm e Manifestos padrão, facilitando a portabilidade sem o overhead de gerenciar máquinas virtuais (Minikube) ou containers Docker aninhados (Kind).
+* **Simplicidade Operacional via k3d:** O uso do **k3d** permite subir o cluster k3s rapidamente como containers Docker, eliminando o overhead de gerenciar máquinas virtuais pesadas (Minikube) ou drivers de virtualização complexos, mantendo compatibilidade total com Helm e manifestos padrão.
+* **Integração com CI/CD Local:** A arquitetura baseada em Docker facilitou a integração com o **GitHub Self-hosted Runner**, permitindo que o pipeline de CD acesse o API Server do cluster sem a necessidade de expor portas para a internet pública.
 
 ## 🛠 Componentes
 * **App:** Microserviço em Node.js com suporte a health checks e exportação de métricas.
@@ -112,23 +113,31 @@ A arquitetura de deployment foi projetada para garantir alta disponibilidade, es
 
 A automação do ciclo de vida da aplicação foi implementada via GitHub Actions, focando em garantir a integridade do código e a consistência dos deploys.
 
-### 1. Pipeline de Integração Contínua (CI)
-* **Build Multi-arquitetura:** O pipeline realiza o build da imagem Docker utilizando o contexto do Dockerfile otimizado, garantindo que apenas imagens que passaram nos testes de build sejam enviadas ao registro.
-* **Versionamento de Imagem:** Foi adotada a estratégia de versionamento via SHA do commit e a tag `latest` para o ambiente de staging, permitindo rastreabilidade total de qual versão do código está rodando em qual container.
+### 1. Estratégia de Runner: GitHub Self-hosted
 
-### 2. Pipeline de Entrega Contínua (CD)
+* **Conectividade Local:** Como o cluster Kubernetes (k3d) está rodando localmente, runners públicos do GitHub não possuem rota de rede para alcançar o plano de controle (Control Plane) do cluster devido a restrições de firewall e IPs privados.
+* **Segurança de Rede:** O uso do runner local elimina a necessidade de expor o API Server do Kubernetes para a internet pública (via Ngrok ou túneis), mantendo a comunicação restrita ao ambiente interno.
+* **Eficiência de Build:** O runner compartilha o daemon do Docker da máquina host, permitindo o reaproveitamento imediato de cache de camadas (layers), o que reduz drasticamente o tempo de build das imagens em comparação a runners efêmeros na nuvem.
+* **Persistência de Ferramental:** Diferente de ambientes de laboratório temporários, o runner local garante a persistência das configurações de context do kubectl e do Helm, tornando o ciclo de desenvolvimento e deploy mais ágil e previsível.
+
+### 2. Pipeline de Integração Contínua (CI)
+* **Build Multi-arquitetura:** O pipeline realiza o build da imagem Docker utilizando o contexto do Dockerfile otimizado, garantindo que apenas imagens que passaram nos testes de build sejam enviadas ao registro.
+* **Versionamento de Imagem:** Foi adotada a estratégia de versionamento via tags numéricas incrementais baseadas no `${{ github.run_number }}`. Esta abordagem garante que cada build gere uma versão única, legível e sequencial (ex: `1.10`, `1.11`), facilitando o rastreio de deploys e a gestão de imagens no Docker Hub.
+
+### 3. Pipeline de Entrega Contínua (CD)
 * **Helm Lint:** Antes de qualquer alteração no cluster, o pipeline executa o `helm lint` para validar a sintaxe e as boas práticas dos templates do Chart, evitando falhas de deploy por erros de indentação ou lógica de template.
 * **Idempotência com Helm:** O deploy é realizado através do comando `helm upgrade --install`. Esta abordagem garante que o pipeline seja idempotente: se o release não existir, ele é criado; se já existir, é atualizado com as novas configurações e imagem.
+* **Imutabilidade de Deploy:** O pipeline injeta a tag específica do build diretamente no manifesto do Kubernetes via Helm durante o deploy. Isso assegura que o cluster execute exatamente a versão de artefato gerada no ciclo de CI, eliminando a ambiguidade de versões.
 
-### 3. Segurança e Portabilidade (Secrets Management)
+### 4. Segurança e Portabilidade (Secrets Management)
 * **Kubeconfig as a Secret:** A autenticação com o cluster Kubernetes é realizada através da variável de ambiente `KUBECONFIG` armazenada nos GitHub Secrets. 
 * **Justificativa:** Esta abordagem desacopla o pipeline da infraestrutura subjacente (iximiuz), permitindo que a estratégia de deploy seja reutilizada em qualquer provedor de nuvem ou ambiente on-premises sem alterações no código. Além disso, garante que credenciais sensíveis nunca fiquem expostas no repositório.
 
-### 4. Gestão de Imagens e Registro Externo (Docker Hub)
+### 5. Gestão de Imagens e Registro Externo (Docker Hub)
 * **External Registry:** Foi adotado o Docker Hub como registro oficial de imagens da solução, em detrimento do registro efêmero local. 
 * **Justificativa:** O uso de um registro externo garante a persistência dos artefatos de build independentemente da vida útil do cluster de teste. Isso facilita auditorias de segurança externas e permite que a imagem seja testada em múltiplos ambientes (Hybrid Cloud) sem necessidade de re-build.
 * **Autenticação Segura:** O acesso ao Docker Hub é realizado via Personal Access Tokens (PAT) injetados como segredos no GitHub Actions, evitando a exposição de senhas globais da conta.
 
-### 5. Portabilidade e Abstração do Pipeline
+### 6. Portabilidade e Abstração do Pipeline
 * **Generic Workflow:** O pipeline foi projetado para ser 100% agnóstico ao usuário. Todas as referências a nomes de registro, tags e contextos de infraestrutura foram movidas para GitHub Secrets.
 * **Justificativa:** Isso permite que o projeto seja replicado por qualquer outro profissional apenas configurando seus próprios Segredos (Secrets), sem a necessidade de alterar uma única linha de código nos arquivos YAML ou Helm. Esta abordagem segue o princípio de "Infrastructure as a Template".
