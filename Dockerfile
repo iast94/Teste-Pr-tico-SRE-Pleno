@@ -6,37 +6,35 @@ WORKDIR /app
 # Copia apenas arquivos de dependências para aproveitar o cache de camadas
 COPY package.json yarn.lock* ./
 
-# Força o Yarn a instalar as versões exatas listadas no yarn.lock
-RUN yarn install --frozen-lockfile
-
-# Copia o restante do código e gera o build (TypeScript -> JS)
-COPY . .
-RUN yarn build
+# Força o Yarn a instalar apenas as dependências listadas em package.json e as versões exatas listadas no yarn.lock
+RUN yarn install --frozen-lockfile --production
 
 # Estágio 2: Runtime (Imagem final otimizada)
-FROM node:18-alpine AS runtime
+FROM node:20-alpine AS runtime
 
-# Definição de variáveis de ambiente exigidas no teste 
+# Identifica quem é o responsável pela imagem
+LABEL maintainer="iast94 - SRE Team"
+
+# Definição de variáveis de ambiente
 ENV APP_ENV=staging
 ENV PORT=8080
 
 WORKDIR /app
 
-# Boas práticas de segurança: Criar usuário não-root [cite: 42]
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001 -G nodejs
+# Segurança: Usuário non-root com ID fixo para conformidade com K8s / Criação de usuário e grupo ANTES dos COPYs (Otimização de Cache)
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
 
-# Copia apenas o necessário do estágio builder (redução de tamanho) [cite: 35]
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
+# Copia apenas o necessário do estágio builder, COPY com --chown numérico (Melhor Prática de Segurança e Tamanho)
+COPY --from=builder --chown=1001:1001 /app/node_modules ./node_modules
+COPY --chown=1001:1001 package.json ./
+COPY --chown=1001:1001 src/ ./src/
 
-# Ajusta permissões para o usuário não-root
-RUN chown -R appuser:nodejs /app
+# USER numérico para compatibilidade total
+USER 1001
 
-USER appuser
-
-# Exposição da porta configurável [cite: 31]
+# Exposição da porta configurável
 EXPOSE ${PORT}
 
-CMD ["node", "dist/main.js"]
+# Executa a aplicação a partir da pasta src
+CMD ["node", "src/app.js"]
