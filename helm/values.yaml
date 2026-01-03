@@ -53,3 +53,7 @@ hpa:
 env:
   APP_ENV: staging
   configMapKey: APP_ENV
+
+pdb:
+  enabled: true
+  minAvailable: 1  # Garante 50% de disponibilidade durante manutenções
