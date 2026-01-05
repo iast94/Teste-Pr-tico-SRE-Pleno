@@ -99,5 +99,4 @@ dashboardProviders:
         options:
           path: /var/lib/grafana/dashboards/default
 
-envFromSecret:
-  - name: grafana-admin-credentials
+envFromSecret: "grafana-admin-credentials"

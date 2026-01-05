@@ -19,8 +19,8 @@ releases:
       - events: ["prepare"]
         showlogs: true
         command: "kubectl"
-        args: ["apply", "--server-side", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml"]
-
+        args: ["apply", "--server-side", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagers.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml"]
+  
   # Tarefa 3: Grafana (Prioridade 2)
   - name: grafana
     namespace: observability
@@ -30,18 +30,11 @@ releases:
       - observability/kube-prometheus-stack # Garante a ordem correta
     values:
       - ./helm/grafana/values.yaml
- 
-  - name: grafana-secrets
-    namespace: observability
-    chart: ./helm/grafana/secrets/grafana-admin-secret.yaml
-    createNamespace: true # O Helmfile cria o namespace se ele não existir
-    needs:
-      - observability/kube-prometheus-stack # Garante a ordem correta
     hooks:
       - events: ["presync"] # Executa após a garantia do namespace, mas antes do sync da release
         command: "kubectl"
         args: ["apply", "-f", "./helm/grafana/secrets/grafana-admin-secret.yaml"]
-
+ 
   # Tarefa 2: Sua Aplicação (Prioridade 3)
   - name: sre-app
     namespace: sre-test
