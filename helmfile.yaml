@@ -26,7 +26,6 @@ releases:
     namespace: observability
     chart: grafana/grafana  
     version: 7.3.0
-    createNamespace: true # O Helmfile cria o namespace se ele não existir
     needs:
       - observability/kube-prometheus-stack # Garante a ordem correta
     values:
@@ -37,6 +36,8 @@ releases:
   - name: grafana-secrets
     namespace: observability
     chart: ./helm/secrets/grafana-admin-secret.yaml
+    needs:
+      - observability/kube-prometheus-stack # Garante a ordem correta
     hooks:
       - events: ["prepare"]
         command: "kubectl"
@@ -46,7 +47,6 @@ releases:
   - name: sre-app
     namespace: sre-test
     chart: ./helm/app # Caminho organizado conforme sugerido
-    createNamespace: true # O Helmfile cria o namespace se ele não existir
     needs:
       - observability/kube-prometheus-stack # App sobe após o monitoramento
     values:
