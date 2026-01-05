@@ -30,9 +30,7 @@ releases:
       - observability/kube-prometheus-stack # Garante a ordem correta
     values:
       - ./helm/grafana/values.yaml
-    secrets:
-      - ./helm/grafana/secrets/grafana-admin-secret.yaml
-
+ 
   - name: grafana-secrets
     namespace: observability
     chart: ./helm/grafana/secrets/grafana-admin-secret.yaml
