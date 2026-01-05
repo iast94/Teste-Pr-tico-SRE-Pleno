@@ -31,11 +31,11 @@ releases:
     values:
       - ./helm/grafana/values.yaml
     secrets:
-      - ./helm/secrets/grafana-admin-secret.yaml
+      - ./helm/grafana/secrets/grafana-admin-secret.yaml
 
   - name: grafana-secrets
     namespace: observability
-    chart: ./helm/secrets/grafana-admin-secret.yaml
+    chart: ./helm/grafana/secrets/grafana-admin-secret.yaml
     createNamespace: true # O Helmfile cria o namespace se ele não existir
     needs:
       - observability/kube-prometheus-stack # Garante a ordem correta
