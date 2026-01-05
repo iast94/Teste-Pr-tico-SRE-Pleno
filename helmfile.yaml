@@ -13,7 +13,7 @@ releases:
     installed: true
     createNamespace: true # O Helmfile cria o namespace se ele não existir
     values:
-      - ./helm/values-prometheus.yaml
+      - ./helm/prometheus/values.yaml
     # Hook indispensável para evitar erros de 'kind not found'
     hooks:
       - events: ["prepare"]
@@ -29,7 +29,7 @@ releases:
     needs:
       - observability/kube-prometheus-stack # Garante a ordem correta
     values:
-      - ./helm/values-grafana.yaml
+      - ./helm/grafana/values.yaml
     secrets:
       - ./helm/secrets/grafana-admin-secret.yaml
 
