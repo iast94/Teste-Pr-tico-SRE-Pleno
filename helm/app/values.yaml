@@ -8,7 +8,7 @@ strategy:
     maxUnavailable: 0
 
 image:
-  repository: iast94/sre-app
+  repository: igor1945/sre-app
   pullPolicy: Always
   tag: "latest"
 

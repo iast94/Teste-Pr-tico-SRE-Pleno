@@ -35,7 +35,7 @@ releases:
         command: "kubectl"
         args: ["apply", "-f", "./helm/grafana/secrets/grafana-admin-secret.yaml"]
  
-  # Tarefa 2: Sua Aplicação (Prioridade 3)
+  # Tarefa 2: Aplicação (Prioridade 3)
   - name: sre-app
     namespace: sre-test
     chart: ./helm/app # Caminho organizado conforme sugerido
