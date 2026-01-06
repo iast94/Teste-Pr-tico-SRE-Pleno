@@ -52,41 +52,155 @@ O pipeline utiliza o arquivo de configuração para autenticação externa.
 2. Copie toda a string resultante.
 3. No GitHub, cole este valor no secret `KUBE_CONFIG_DATA`.
 
-## Guia de Execução e Automação de Segurança
+### 4. Execução do Projeto
 
-Esta seção descreve os procedimentos necessários para preparar o ambiente local e garantir que a criptografia dos segredos seja realizada corretamente antes do deploy.
-
-### 1. Preparação do Script de Bootstrap
-Para garantir que o script de automação de segurança seja reconhecido como um programa pelo sistema operacional, é necessário conceder permissões de execução.
-
-* **Atribuição de Permissão**: Utilize o comando `chmod +x` para transformar o script em um arquivo executável.
-    ```bash
-    chmod +x setup-sealed-secrets.sh
-    ```
-* **Verificação**: Após a execução, o arquivo mudará de cor no terminal (geralmente para verde), indicando que está pronto para ser processado.
-
-### 2. Execução da Automação de Segurança
-O script `setup-sealed-secrets.sh` deve ser executado antes do deploy principal. Ele garante que o controlador do Sealed Secrets esteja presente no cluster e que suas credenciais locais sejam convertidas em hashes seguros.
-
-* **Configuração de Variáveis**: Certifique-se de que as variáveis de ambiente necessárias estejam carregadas no seu terminal para que o script possa criptografá-las.
-    ```bash
-    export GRAFANA_USER="seu_usuario"
-    export GRAFANA_PASSWORD="sua_senha_forte"
-    ```
-* **Rodando o Script**: Execute o arquivo utilizando o prefixo `./`.
-    ```bash
-    ./setup-sealed-secrets.sh
-    ```
-
-### 3. Ciclo de Deploy com Helmfile
-Com os segredos selados e os arquivos `.helmignore` configurados, o deploy é realizado de forma atômica e segura.
-
-* **Sincronização do Cluster**: O comando abaixo processará todas as releases, incluindo a aplicação dos manifestos criptografados.
-    ```bash
-    helmfile apply
-    ```
+Esta seção descreve como o projeto é executado localmente e como o pipeline de CI/CD realiza o deploy automático no cluster Kubernetes.
 
 ---
+
+#### 🔁 Fluxo geral de execução
+
+O fluxo de execução do projeto segue o modelo abaixo:
+
+1. **Bootstrap do cluster (manual / inicial)**  
+   - Instalação do Sealed Secrets Controller  
+   - Geração e criptografia dos secrets sensíveis (Grafana)
+
+2. **Versionamento apenas de manifests seguros**  
+   - Apenas `SealedSecret` é commitado no repositório
+
+3. **Execução automática via CI/CD**  
+   - Build e push da imagem Docker
+   - Deploy da aplicação e stack de observabilidade via Helmfile
+
+Qualquer alteração enviada para a branch `main` dispara automaticamente o pipeline definido em `.github/workflows/main.yml`.
+
+#### 🧩 Pré-requisito: Bootstrap de Secrets (Sealed Secrets)
+
+Antes do primeiro deploy, é necessário executar **uma única vez** o script responsável por configurar o Sealed Secrets e gerar os secrets criptografados.
+
+#### 🔐 Bootstrap de Sealed Secrets (Grafana)
+
+Este projeto utiliza **Sealed Secrets** para gerenciar credenciais sensíveis de forma segura e versionável.  
+Para isso, foi criado um script de bootstrap responsável por instalar dependências, configurar o controller e gerar os manifests criptografados utilizados pelo Grafana.
+
+**Script: `scripts/setup-sealed-secrets.sh`** 
+
+O script executa as seguintes etapas:
+
+- **Verificação de dependências**  
+  Garante que `kubectl` e `helm` estejam disponíveis no ambiente antes da execução.
+
+- **Instalação local do `yq`**  
+  O binário do `yq` é instalado localmente no repositório (`.bin/yq`), evitando dependências globais no sistema e garantindo reprodutibilidade.
+
+- **Instalação do `kubeseal`**  
+  Caso não esteja presente, o binário do `kubeseal` é instalado automaticamente de acordo com o sistema operacional e arquitetura.
+
+- **Instalação do Sealed Secrets Controller via Helm**  
+  O controller é instalado (ou reutilizado, se já existir) no namespace `kube-system`, garantindo que o cluster esteja apto a descriptografar SealedSecrets.
+
+- **Criação do namespace `observability`**  
+  O namespace é criado automaticamente caso ainda não exista.
+
+- **Coleta interativa de credenciais do Grafana**  
+  O usuário informa o `admin-user` e `admin-password`, que nunca são versionados em texto claro.
+
+- **Geração de Secret temporário (dry-run)**  
+  Um Secret Kubernetes temporário é criado apenas em memória para servir de entrada ao processo de criptografia.
+
+- **Geração do SealedSecret**  
+  O Secret é criptografado com a chave pública do controller, gerando o arquivo: helm/grafana/secrets/grafana-admin-sealed.yaml
+
+- **Configuração de ownership do SealedSecret**  
+É adicionada a annotation: sealedsecrets.bitnami.com/managed: "true"
+garantindo que o Secret gerado seja corretamente gerenciado pelo controller.
+
+- **Limpeza de arquivos temporários**  
+Qualquer Secret em texto claro é removido ao final da execução.
+
+##### Resultado
+
+- Apenas o **SealedSecret** é versionado no repositório
+- Nenhuma credencial sensível é exposta
+- O Secret real é criado automaticamente no cluster pelo Sealed Secrets Controller
+- O Grafana consome as credenciais via `existingSecret`, garantindo segurança desde o primeiro boot
+
+##### Observação Importante
+
+Em ambientes Kubernetes, **credenciais do Grafana só são aplicadas corretamente no primeiro start**, pois o banco de dados é persistido em um PVC.  
+Por isso, este script é pensado para uso em **bootstrap inicial de ambiente**, garantindo um estado consistente e previsível.
+
+
+#### ▶️ Tornando o script executável
+
+Antes de executar o script pela primeira vez, é necessário conceder permissão de execução:
+
+```bash
+chmod +x scripts/setup-sealed-secrets.sh
+```
+
+Esse comando precisa ser executado apenas uma vez.
+
+---
+
+#### ▶️ Executando o script
+
+Com o cluster Kubernetes ativo e o `kubectl` configurado corretamente:
+
+```bash
+./scripts/setup-sealed-secrets.sh
+```
+
+Durante a execução:
+- O script solicitará interativamente o usuário e senha do Grafana
+- As credenciais serão criptografadas utilizando o Sealed Secrets
+- Apenas o arquivo `SealedSecret` será gerado e versionado
+
+**Observação:**  
+O script é idempotente e pode ser executado novamente caso seja necessário recriar os secrets (por exemplo, em caso de recriação do cluster).
+
+#### 🔐 Segurança de Secrets
+
+- Nenhuma credencial sensível é armazenada em texto claro no repositório
+- O Git versiona apenas manifests criptografados (`SealedSecret`)
+- O segredo real é descriptografado **somente dentro do cluster**
+- O Helm Chart do Grafana apenas **consome um Secret existente**, seguindo boas práticas de segurança
+
+Esse modelo simula um ambiente de produção onde secrets são gerenciados por provedores externos (como AWS Secrets Manager ou Vault).
+
+---
+
+#### Pipeline de CI/CD
+
+Qualquer alteração enviada para a branch `main` dispara automaticamente o workflow localizado em:
+
+.github/workflows/main.yml
+
+O pipeline executa as seguintes etapas:
+
+- **Build & Push**  
+  Build da imagem Docker da aplicação e envio para o Docker Hub
+
+- **Deploy**  
+  - Criação dos namespaces necessários
+  - Deploy da aplicação e da stack de observabilidade via Helmfile
+  - Aplicação automática dos `SealedSecrets` utilizando hooks `presync`
+
+O deploy é totalmente automatizado, sem necessidade de intervenção manual após o bootstrap inicial.
+
+---
+
+#### 🧠 Decisão de Design
+
+A separação entre:
+- **Bootstrap de secrets**
+- **Deploy contínuo da aplicação**
+
+permite simular um ambiente de plataforma madura, onde:
+- Secrets são tratados como responsabilidade da infraestrutura
+- Helm Charts não possuem lógica de gerenciamento de credenciais
+- O pipeline de CI/CD permanece simples, previsível e seguro
 
 #### 🛠️ Decisões de Engenharia: Operações e Bootstrap
 * **Gestão de Permissões de Scripting**: Foi adotada a padronização de permissões POSIX (`chmod +x`) para assegurar a integridade da execução dos scripts de bootstrap de infraestrutura.
@@ -126,7 +240,7 @@ Com os segredos selados e os arquivos `.helmignore` configurados, o deploy é re
 
 A arquitetura de deployment foi projetada para garantir alta disponibilidade, escalabilidade automática e isolamento de recursos, seguindo as melhores práticas de infraestrutura como código.
 
-#### 1. Orquestração Declarativa e Reutilização (Helm & Helmfile)
+### 1. Orquestração Declarativa e Reutilização (Helm & Helmfile)
 * **Orquestração via Helmfile:** A utilização do Helmfile permite gerenciar o ciclo de vida da aplicação e da stack de observabilidade de forma unificada. Através da definição de dependências (`needs`), garante-se que o monitoramento esteja operacional antes do deploy da aplicação principal.
 * **Gestão de Ordem de Provisionamento**: Foi adotada uma estratégia de dependências explícitas (`needs`) no arquivo de orquestração. Esta decisão técnica foi implementada para garantir a ordem correta de provisionamento, assegurando que o namespace de observabilidade e os recursos base (Prometheus) sejam estabelecidos antes da execução de hooks de injeção de segredos ou componentes dependentes.
 * **Gestão de Dependências e Hooks**: Foi adotada uma estratégia de precedência onde segredos críticos são injetados via hooks de `presync`. Esta decisão técnica garante que o namespace `observability` seja devidamente estabelecido antes da execução de comandos `kubectl` externos, assegurando a integridade do provisionamento das credenciais.
