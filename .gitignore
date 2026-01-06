@@ -8,3 +8,11 @@ npm-debug.log*
 # Arquivos do sistema
 .DS_Store
 Thumbs.db
+
+# Sealed Secrets / kubeseal artifacts
+kubeseal
+kubeseal-*.tar.gz
+pub-cert.pem
+
+# Temporary secret generation files
+.tmp-secrets/

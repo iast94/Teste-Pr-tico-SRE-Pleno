@@ -52,11 +52,48 @@ O pipeline utiliza o arquivo de configuração para autenticação externa.
 2. Copie toda a string resultante.
 3. No GitHub, cole este valor no secret `KUBE_CONFIG_DATA`.
 
-### 4. Execução
-Qualquer alteração enviada para a branch `main` disparará o workflow `.github/workflows/main.yml`. Este pipeline gerencia:
-* **Build e Push:** Envio da imagem para o Docker Hub.
-* **Deploy:** Criação do namespace e instalação via Helm no Kubernetes.
+## Guia de Execução e Automação de Segurança
 
+Esta seção descreve os procedimentos necessários para preparar o ambiente local e garantir que a criptografia dos segredos seja realizada corretamente antes do deploy.
+
+### 1. Preparação do Script de Bootstrap
+Para garantir que o script de automação de segurança seja reconhecido como um programa pelo sistema operacional, é necessário conceder permissões de execução.
+
+* **Atribuição de Permissão**: Utilize o comando `chmod +x` para transformar o script em um arquivo executável.
+    ```bash
+    chmod +x setup-sealed-secrets.sh
+    ```
+* **Verificação**: Após a execução, o arquivo mudará de cor no terminal (geralmente para verde), indicando que está pronto para ser processado.
+
+### 2. Execução da Automação de Segurança
+O script `setup-sealed-secrets.sh` deve ser executado antes do deploy principal. Ele garante que o controlador do Sealed Secrets esteja presente no cluster e que suas credenciais locais sejam convertidas em hashes seguros.
+
+* **Configuração de Variáveis**: Certifique-se de que as variáveis de ambiente necessárias estejam carregadas no seu terminal para que o script possa criptografá-las.
+    ```bash
+    export GRAFANA_USER="seu_usuario"
+    export GRAFANA_PASSWORD="sua_senha_forte"
+    ```
+* **Rodando o Script**: Execute o arquivo utilizando o prefixo `./`.
+    ```bash
+    ./setup-sealed-secrets.sh
+    ```
+
+### 3. Ciclo de Deploy com Helmfile
+Com os segredos selados e os arquivos `.helmignore` configurados, o deploy é realizado de forma atômica e segura.
+
+* **Sincronização do Cluster**: O comando abaixo processará todas as releases, incluindo a aplicação dos manifestos criptografados.
+    ```bash
+    helmfile apply
+    ```
+
+---
+
+#### 🛠️ Decisões de Engenharia: Operações e Bootstrap
+* **Gestão de Permissões de Scripting**: Foi adotada a padronização de permissões POSIX (`chmod +x`) para assegurar a integridade da execução dos scripts de bootstrap de infraestrutura.
+* **Orquestração de Segurança Pré-Deploy**: Foi estabelecido um fluxo de execução sequencial onde a automação de criptografia precede o deploy do Helmfile, garantindo que nenhum dado sensível em texto claro seja injetado no cluster.
+* **Automação de Dependências**: O processo de execução inclui o download dinâmico e a instalação de binários de segurança (kubeseal), reduzindo o atrito na preparação do ambiente de desenvolvimento e garantindo a paridade de versões entre colaboradores.
+
+## Decisões Técnicas
 ## 🐳Tarefa 1: Containerização & Execução - Decisões Técnicas: Dockerfile
 
 ### 1. Imagem Base: Node 20-alpine (Active LTS)

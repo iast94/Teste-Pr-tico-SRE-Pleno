@@ -32,8 +32,9 @@ releases:
       - ./helm/grafana/values.yaml
     hooks:
       - events: ["presync"] # Executa após a garantia do namespace, mas antes do sync da release
+        showlogs: true
         command: "kubectl"
-        args: ["apply", "-f", "./helm/grafana/secrets/grafana-admin-secret.yaml"]
+        args: ["apply", "-f", "./helm/grafana/secrets/grafana-admin-sealed.yaml"]
  
   # Tarefa 2: Aplicação (Prioridade 3)
   - name: sre-app
