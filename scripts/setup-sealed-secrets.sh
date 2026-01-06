@@ -16,7 +16,8 @@ SEALED_SECRET_NAME="grafana-admin-sealed"
 
 TMP_DIR=".tmp-secrets"
 PLAIN_SECRET_FILE="${TMP_DIR}/grafana-secret.yaml"
-SEALED_SECRET_FILE="helm/grafana/secrets/grafana-admin-sealed.yaml"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" # Diretório raiz do repositório (independente de onde o script é executado)
+SEALED_SECRET_FILE="$ROOT_DIR/helm/grafana/secrets/grafana-admin-sealed.yaml"
 
 ############################################
 # Helpers
