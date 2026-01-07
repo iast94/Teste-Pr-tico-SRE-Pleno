@@ -14,6 +14,12 @@ releases:
     createNamespace: true # O Helmfile cria o namespace se ele não existir
     values:
       - ./helm/prometheus/values.yaml
+      - prometheus:
+          prometheusSpec:
+            podMetadata:
+              annotations:
+                # Gera um hash baseado no arquivo de values local. O hash só muda se o CONTEÚDO do arquivo mudar
+                checksum/config: {{ readFile "helm/prometheus/values.yaml" | sha256sum }}
     # Hook indispensável para evitar erros de 'kind not found'
     hooks:
       - events: ["prepare"]
@@ -30,6 +36,11 @@ releases:
       - observability/kube-prometheus-stack # Garante a ordem correta
     values:
       - ./helm/grafana/values.yaml
+      - podAnnotations:
+          # Monitora mudanças no arquivo principal de configuração
+          config-checksum: {{ readFile "helm/grafana/values.yaml" | sha256sum }}
+          # Monitora mudanças especificamente no arquivo de senha selada
+          secret-checksum: {{ readFile "helm/grafana/secrets/grafana-admin-sealed.yaml" | sha256sum }}
     hooks:
       - events: ["presync"] # Executa após a garantia do namespace, mas antes do sync da release
         showlogs: true
@@ -39,65 +50,9 @@ releases:
   # Tarefa 2: Aplicação (Prioridade 3)
   - name: sre-app
     namespace: sre-test
-    chart: ./helm/app # Caminho organizado conforme sugerido
-    needs:
-      - observability/kube-prometheus-stack # App sobe após o monitoramento
-    values:
-      - ./helm/app/values.yaml
-    repositories:
-  - name: prometheus-community
-    url: https://prometheus-community.github.io/helm-charts
-  - name: grafana
-    url: https://grafana.github.io/helm-charts
-
-releases:
-  # Tarefa 3: Stack de Monitoramento (Prioridade 1)
-  - name: kube-prometheus-stack
-    namespace: observability
-    chart: prometheus-community/kube-prometheus-stack
-    version: 65.4.0
-    installed: true
-    createNamespace: true
-    values:
-      - ./helm/prometheus/values.yaml
-      - prometheus:
-          prometheusSpec:
-            podMetadata:
-              annotations:
-                # Gera um hash baseado no arquivo de values local. O hash só muda se o CONTEÚDO do arquivo mudar
-                checksum/config: {{ readFile "helm/prometheus/values.yaml" | sha256sum }}
-    hooks:
-      - events: ["prepare"]
-        showlogs: true
-        command: "kubectl"
-        args: ["apply", "--server-side", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagers.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml", "-f", "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml"]
-  
-  # Tarefa 3: Grafana (Prioridade 2)
-  - name: grafana
-    namespace: observability
-    chart: grafana/grafana  
-    version: 7.3.0
-    needs:
-      - observability/kube-prometheus-stack
-    values:
-      - ./helm/grafana/values.yaml
-      - podAnnotations:
-          # Monitora mudanças no arquivo principal de configuração
-          config-checksum: {{ readFile "helm/grafana/values.yaml" | sha256sum }}
-          # Monitora mudanças especificamente no arquivo de senha selada
-          secret-checksum: {{ readFile "helm/grafana/secrets/grafana-admin-sealed.yaml" | sha256sum }}
-    hooks:
-      - events: ["presync"]
-        showlogs: true
-        command: "kubectl"
-        args: ["apply", "-f", "./helm/grafana/secrets/grafana-admin-sealed.yaml"]
- 
-  # Tarefa 2: Aplicação (Prioridade 3)
-  - name: sre-app
-    namespace: sre-test
     chart: ./helm/app
     needs:
-      - observability/kube-prometheus-stack
+      - observability/kube-prometheus-stack # App sobe após o monitoramento
     values:
       - ./helm/app/values.yaml
     # Injeta a tag versionada da variável de ambiente
