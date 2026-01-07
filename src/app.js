@@ -1,61 +1,58 @@
-const express = require("express");
-const client = require("prom-client");
+const express = require('express');
+const client = require('prom-client');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 /**
  * =========================
- * Prometheus Metrics Setup
+ * Prometheus setup
  * =========================
  */
-client.collectDefaultMetrics();
+const register = new client.Registry();
 
-const httpRequestCounter = new client.Counter({
-  name: "http_requests_total",
-  help: "Total number of HTTP requests",
-  labelNames: ["method", "route", "status"]
+// Métricas padrão (CPU, memória, event loop etc.)
+client.collectDefaultMetrics({ register });
+
+// Contador de requests HTTP
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status'],
 });
 
-const httpRequestErrors = new client.Counter({
-  name: "http_requests_errors_total",
-  help: "Total number of HTTP error responses",
-  labelNames: ["route", "status"]
+// Histograma de latência
+const httpRequestDurationSeconds = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request latency in seconds',
+  labelNames: ['method', 'route', 'status'],
+  buckets: [0.05, 0.1, 0.2, 0.5, 1, 2, 5],
 });
 
-const httpRequestDuration = new client.Histogram({
-  name: "http_request_duration_seconds",
-  help: "HTTP request latency",
-  labelNames: ["method", "route"],
-  buckets: [0.1, 0.3, 0.5, 1, 1.5, 2, 3, 5]
-});
+register.registerMetric(httpRequestsTotal);
+register.registerMetric(httpRequestDurationSeconds);
 
 /**
  * =========================
- * Middleware to track metrics
+ * Middleware de métricas
  * =========================
  */
 app.use((req, res, next) => {
-  const end = httpRequestDuration.startTimer({
-    method: req.method,
-    route: req.path
-  });
+  const start = process.hrtime();
 
-  res.on("finish", () => {
-    httpRequestCounter.inc({
-      method: req.method,
-      route: req.path,
-      status: res.statusCode
-    });
+  res.on('finish', () => {
+    const diff = process.hrtime(start);
+    const durationSeconds = diff[0] + diff[1] / 1e9;
 
-    if (res.statusCode >= 400) {
-      httpRequestErrors.inc({
-        route: req.path,
-        status: res.statusCode
-      });
-    }
+    const route = req.route?.path || req.path;
 
-    end();
+    httpRequestsTotal
+      .labels(req.method, route, res.statusCode.toString())
+      .inc();
+
+    httpRequestDurationSeconds
+      .labels(req.method, route, res.statusCode.toString())
+      .observe(durationSeconds);
   });
 
   next();
@@ -63,48 +60,94 @@ app.use((req, res, next) => {
 
 /**
  * =========================
- * Application Endpoints
+ * Rotas de sucesso (2xx)
  * =========================
  */
 
-// Health check (liveness)
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
+// Root
+app.get('/', (req, res) => {
+  res.json({ message: 'OK' });
 });
 
-// Readiness check
-app.get("/ready", (req, res) => {
-  res.status(200).json({ status: "ready" });
-});
-
-// Normal request
-app.get("/api", (req, res) => {
-  res.json({ message: "Hello from SRE Pleno App 🚀" });
-});
-
-// Simulate slow request
-app.get("/slow", async (req, res) => {
-  const delay = Math.floor(Math.random() * 2000) + 500;
-  await new Promise((resolve) => setTimeout(resolve, delay));
-  res.json({ message: `Slow response (${delay}ms)` });
-});
-
-// Simulate error
-app.get("/error", (req, res) => {
-  res.status(500).json({ error: "Simulated internal error" });
-});
-
-// Prometheus metrics endpoint
-app.get("/metrics", async (req, res) => {
-  res.set("Content-Type", client.register.contentType);
-  res.end(await client.register.metrics());
+// Healthcheck
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
 });
 
 /**
  * =========================
- * Server
+ * Redirecionamento real (3xx)
+ * =========================
+ */
+app.get('/redirect', (req, res) => {
+  res.redirect(302, '/');
+});
+
+/**
+ * =========================
+ * Erros reais do CLIENTE (4xx)
+ * =========================
+ */
+
+// Contrato inválido (parâmetro obrigatório)
+app.get('/user', (req, res) => {
+  if (!req.query.id) {
+    return res.status(400).json({
+      error: 'Missing required query parameter: id',
+    });
+  }
+
+  res.json({ userId: req.query.id });
+});
+
+/**
+ * =========================
+ * Erros reais do SERVIDOR (5xx)
+ * =========================
+ */
+
+// Bug interno (exceção não tratada)
+app.get('/process', (req, res) => {
+  throw new Error('Unexpected internal processing error');
+});
+
+// Simula dependência lenta / timeout
+app.get('/dependency', async (req, res) => {
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  throw new Error('Upstream dependency timeout');
+});
+
+// Latência alta, mas sucesso
+app.get('/slow', async (req, res) => {
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  res.json({ message: 'Slow but successful response' });
+});
+
+/**
+ * =========================
+ * Handler global de erro (5xx)
+ * =========================
+ */
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
+/**
+ * =========================
+ * Endpoint de métricas
+ * =========================
+ */
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+/**
+ * =========================
+ * Start server
  * =========================
  */
 app.listen(PORT, () => {
-  console.log(`🚀 App running on port ${PORT}`);
+  console.log(`App running on port ${PORT}`);
 });
