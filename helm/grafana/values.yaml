@@ -61,7 +61,7 @@ datasources:
     datasources:
       - name: Prometheus
         type: prometheus
-        url: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local
+        url: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090
         access: proxy
         isDefault: true
 
