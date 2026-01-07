@@ -53,6 +53,6 @@ jobs:
         run: helmfile apply --suppress-secrets
         env:
           KUBECONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-          IMAGE_TAG: ${{ github.run_number }}
+          IMAGE_TAG: 1.${{ github.run_number }}
           GRAFANA_USER: ${{ secrets.GRAFANA_USER }}
           GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}

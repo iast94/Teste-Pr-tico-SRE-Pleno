@@ -9,8 +9,8 @@ strategy:
 
 image:
   repository: igor1945/sre-app
-  pullPolicy: Always
-  tag: "latest"
+  pullPolicy: IfNotPresent
+  tag: ""
 
 securityContext:
   runAsUser: 1001

@@ -20,6 +20,11 @@ spec:
     metadata:
       labels:
         {{- include "my-app.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Força rolling restart quando o ConfigMap muda
+        checksum/config: {{ include (print $.Template.BasePath "/app-configmap.yaml") . | sha256sum }}
+        # Força rolling restart quando a imagem muda
+        image-version: {{ .Values.image.tag | quote }}
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

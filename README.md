@@ -264,6 +264,11 @@ A arquitetura de deployment foi projetada para garantir alta disponibilidade, es
 * **Zero Downtime:** Foi configurada a estratégia `RollingUpdate` com `maxUnavailable: 0`. Isso garante que o Kubernetes nunca remova uma versão antiga da aplicação sem antes ter uma nova versão saudável e pronta para receber tráfego, eliminando quedas de serviço durante atualizações de versão.
 * **Justificativa:** Esta escolha garante que a capacidade total da aplicação (2 réplicas) seja preservada durante todo o processo de atualização. O Kubernetes é forçado a instanciar um novo Pod saudável antes de iniciar o encerramento de qualquer instância da versão anterior, evitando gargalos de processamento durante janelas de deploy.
 
+### 6. Gestão de Configurações e Ciclo de Vida (Helm & Prometheus)
+* **Helmfile para Orquestração**: Foi utilizado o `helmfile.yaml` para centralizar a gestão das releases (Prometheus, Grafana e Aplicação), garantindo que o estado desejado do cluster seja aplicado de forma declarativa e reproduzível.
+* **Gatilhos de Atualização no Prometheus**: Foi configurado o `podMetadata` no `values.yaml` do Prometheus para incluir um hash das configurações. Isso garante que qualquer alteração nos parâmetros do Prometheus resulte em um **Rolling Update** automático dos pods, mantendo a observabilidade sempre atualizada.
+* **Resiliência do Grafana**: Foram implementadas `podAnnotations` que monitoram tanto o `values.yaml` quanto o arquivo de segredos selados (`grafana-admin-sealed.yaml`). Foi utilizada a função `readFile` combinada com `sha256sum` para que o Grafana reinicie apenas quando houver mudanças reais em suas configurações ou credenciais.
+
 ## 🚀 Tarefa 4: Pipeline CI/CD - Decisões Técnicas: CI/CD (GitHub Actions)
 
 A automação do ciclo de vida da aplicação foi implementada via GitHub Actions, focando em garantir a integridade do código e a consistência dos deploys.
@@ -287,6 +292,8 @@ A automação do ciclo de vida da aplicação foi implementada via GitHub Action
 * **Idempotência e Sincronização:** O Helmfile garante que o cluster reflita exatamente o estado definido nos arquivos de configuração, tratando atualizações e instalações de forma nativa e segura.
 * **Abstração de Ambientes:** O uso do Helmfile facilita a separação de contextos, permitindo que o mesmo pipeline gerencie diferentes estados do cluster de forma organizada.
 * **Imutabilidade de Deploy:** O pipeline injeta a tag específica do build diretamente no manifesto do Kubernetes via Helm durante o deploy. Isso assegura que o cluster execute exatamente a versão de artefato gerada no ciclo de CI, eliminando a ambiguidade de versões.
+* **Gatilhos de Rollout via Checksum**: O `app-deployment.yaml` contém anotações de checksum que monitoram o `app-configmap.yaml`. Foi implementada a lógica `checksum/config: {{ include (print $.Template.BasePath "/app-configmap.yaml") . | sha256sum }}` para forçar o Kubernetes a realizar um novo rollout sempre que uma configuração for alterada, garantindo que a aplicação consuma os dados mais recentes sem intervenção manual.
+* **Propagação de Tags via Helmfile**: Foi estabelecido o uso de `IMAGE_TAG` como uma variável de ambiente obrigatória no `helmfile.yaml`. No pipeline, o deploy é executado através do comando `helmfile apply`, que injeta a tag da imagem construída no passo anterior, garantindo a integridade entre o artefato gerado e o que é implantado no cluster.
 
 ### 4. Segurança e Portabilidade (Secrets Management)
 * **Kubeconfig as a Secret:** A autenticação com o cluster Kubernetes é realizada através da variável de ambiente `KUBECONFIG` armazenada nos GitHub Secrets. 
