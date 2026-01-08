@@ -6,6 +6,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "20"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   template:
     spec:
@@ -15,10 +16,15 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - |
-            # Aguarda o Kibana (200 OK)
+            # Aguarda o Kibana e Elasticsearch (200 OK)
+            until $(curl -s -o /dev/null -w "%{http_code}" http://elasticsearch-master:9200/_cluster/health | grep -q "200"); do
+              echo "Aguardando Elasticsearch ficar saudável..."
+              sleep 10
+            done
             until $(curl -s -o /dev/null -w "%{http_code}" http://kibana-kibana:5601/api/status | grep -q "200"); do
-              sleep 10;
-            done;
+              echo "Aguardando Kibana ficar pronto..."
+              sleep 10
+            done
             # 1. Importa Index Pattern
             curl -X POST "http://kibana-kibana:5601/api/saved_objects/index-pattern" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d @/data/index-pattern.json
             # 2. Importa Dashboard
