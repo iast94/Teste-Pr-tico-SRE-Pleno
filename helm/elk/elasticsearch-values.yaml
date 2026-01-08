@@ -1,0 +1,35 @@
+# Configuração para ambiente de desenvolvimento/teste (Single Node)
+replicas: 1
+minimumMasterNodes: 1
+
+# Recursos ajustados para o seu cluster local
+resources:
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
+
+# Persistência de dados dos logs
+persistence:
+  enabled: true
+  size: 2Gi
+
+# Probes de Saúde para Resiliência
+clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
+
+# Liveness: Reinicia se o processo travar
+livenessProbe:
+  initialDelaySeconds: 90
+  periodSeconds: 10
+
+# Readiness: Garante que o ES está pronto para receber logs
+readinessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+# Startup: Dá tempo para o bootstrap do nó
+startupProbe:
+  failureThreshold: 30
+  periodSeconds: 10

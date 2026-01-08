@@ -1,0 +1,6 @@
+{
+  "attributes": {
+    "title": "app-logs-staging-*",
+    "timeFieldName": "@timestamp"
+  }
+}

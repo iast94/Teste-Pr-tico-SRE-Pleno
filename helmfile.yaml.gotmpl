@@ -3,6 +3,8 @@ repositories:
     url: https://prometheus-community.github.io/helm-charts
   - name: grafana
     url: https://grafana.github.io/helm-charts
+  - name: elastic
+    url: https://helm.elastic.co
 
 releases:
   # Tarefa 3: Stack de Monitoramento (Prioridade 1)
@@ -55,3 +57,47 @@ releases:
     set:
       - name: image.tag
         value: {{ requiredEnv "IMAGE_TAG" }}
+
+  # Tarefa 5: Elasticsearch (Camada de Dados)
+  - name: elasticsearch
+    namespace: observability
+    chart: elastic/elasticsearch
+    version: 8.5.1
+    values:
+      - ./helm/elk/elasticsearch-values.yaml
+
+  # Tarefa 5: Logstash (Processamento com o Logstash.conf que criamos)
+  - name: logstash
+    namespace: observability
+    chart: elastic/logstash
+    version: 8.5.1
+    needs:
+      - observability/elasticsearch
+    values:
+      - ./helm/elk/logstash-values.yaml
+
+  # Tarefa 5: Kibana (Visualização)
+  - name: kibana
+    namespace: observability
+    chart: elastic/kibana
+    version: 8.5.1
+    needs:
+      - observability/elasticsearch
+    values:
+      - ./helm/elk/kibana-values.yaml
+    # Injeta os arquivos JSON como ConfigMaps para o Job ler
+    set:
+      - name: extraConfigMaps.kibana-setup-config.data.index-pattern\.json
+        value: {{ readFile "helm/elk/files/index-pattern.json" | quote }}
+      - name: extraConfigMaps.kibana-dashboards-content.data.kibana-dashboard\.ndjson
+        value: {{ readFile "elk/dashboard/kibana-dashboard.json" | quote }}
+
+  # Tarefa 5: Filebeat (Coleta de Logs via DaemonSet)
+  - name: filebeat
+    namespace: observability
+    chart: elastic/filebeat
+    version: 8.5.1
+    needs:
+      - observability/elasticsearch
+    values:
+      - ./helm/elk/filebeat-values.yaml

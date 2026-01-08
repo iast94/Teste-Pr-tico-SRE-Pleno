@@ -1,0 +1,14 @@
+{
+  "params": {
+    "aggType": "count",
+    "thresholdComparator": ">=",
+    "threshold": [20],
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "index": ["app-logs-staging-*"]
+  },
+  "consumer": "alerts",
+  "rule_type_id": ".index-threshold",
+  "schedule": { "interval": "1m" },
+  "name": "SRE Alert: High Error Rate"
+}

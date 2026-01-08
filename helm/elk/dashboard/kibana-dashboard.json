@@ -1,0 +1,19 @@
+{
+  "objects": [
+    {
+      "type": "dashboard",
+      "attributes": {
+        "title": "SRE Pleno - Application Logs",
+        "panelsJSON": "[...]", 
+        "description": "Dashboard com Volume por Nível, Top Endpoints e Latência"
+      }
+    },
+    {
+      "type": "visualization",
+      "attributes": {
+        "title": "Volume por Nível",
+        "visState": "{\"type\":\"pie\",\"params\":{\"type\":\"pie\"},\"aggs\":[{\"id\":\"1\",\"type\":\"count\",\"schema\":\"metric\"},{\"id\":\"2\",\"type\":\"terms\",\"schema\":\"segment\",\"params\":{\"field\":\"level.keyword\"}}]}"
+      }
+    }
+  ]
+}

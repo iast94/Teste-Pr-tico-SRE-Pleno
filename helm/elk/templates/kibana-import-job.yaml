@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kibana-import-dashboard
+  namespace: observability
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+spec:
+  template:
+    spec:
+      containers:
+      - name: kibana-import
+        image: curlimages/curl:latest
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          # Aguarda o Kibana ficar pronto
+          until $(curl -s -o /dev/null -w "%{http_code}" http://kibana:5601/api/status | grep -q "200"); do
+            echo "Aguardando Kibana..."
+            sleep 5
+          done
+          
+          # Importa o Dashboard JSON (Montado via ConfigMap ou baixado do Repo)
+          curl -X POST "http://kibana:5601/api/saved_objects/_import" \
+            -H "kbn-xsrf: true" \
+            --form file=@/data/kibana-dashboard.ndjson
+        volumeMounts:
+        - name: dashboard-data
+          mountPath: /data
+      restartPolicy: OnFailure
+      volumes:
+      - name: dashboard-data
+        configMap:
+          name: kibana-dashboards-cm

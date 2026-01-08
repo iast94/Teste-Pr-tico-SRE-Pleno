@@ -1,0 +1,35 @@
+elasticsearchHosts: "http://elasticsearch-master:9200"
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
+
+# Configuração para acesso local via port-forward
+service:
+  type: ClusterIP
+  port: 5601
+
+  livenessProbe:
+  httpGet:
+    path: /api/status
+    port: 5601
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/status
+    port: 5601
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+startupProbe:
+  httpGet:
+    path: /api/status
+    port: 5601
+  failureThreshold: 20
+  periodSeconds: 5

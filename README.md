@@ -270,7 +270,65 @@ A arquitetura de deployment foi projetada para garantir alta disponibilidade, es
 * **Resiliência do Grafana**: Foi implementada uma lógica de podAnnotations que monitora simultaneamente o arquivo values.yaml e o manifesto de segredos selados (grafana-admin-sealed.yaml). Através da função list combinada com readFile e sha256sum, o rollout do Grafana é disparado automaticamente apenas quando ocorrem mudanças reais em suas configurações ou nas credenciais criptografadas, assegurando que novos segredos sejam lidos imediatamente após o deploy.
 * **Gatilhos de Rollout via Checksum**: O `app-deployment.yaml` contém anotações de checksum que monitoram o `app-configmap.yaml`. Foi implementada a lógica `checksum/config: {{ include (print $.Template.BasePath "/app-configmap.yaml") . | sha256sum }}` para forçar o Kubernetes a realizar um novo rollout sempre que uma configuração for alterada, garantindo que a aplicação consuma os dados mais recentes sem intervenção manual.
 
-## 🚀 Tarefa 4: Pipeline CI/CD - Decisões Técnicas: CI/CD (GitHub Actions)
+## 📊 Decisões Técnicas – Tarefa 3: Observabilidade (Métricas & Dashboard)
+
+A coleta de métricas da aplicação foi implementada utilizando **Prometheus Operator** em conjunto com **CRDs (ServiceMonitor)**, em vez do uso de annotations diretas no Deployment. Essa decisão foi tomada priorizando escalabilidade, desacoplamento e alinhamento com práticas modernas de SRE em ambientes Kubernetes.
+
+### Coleta de Métricas via ServiceMonitor
+
+A aplicação expõe o endpoint `/metrics` no padrão Prometheus, permitindo a coleta nativa de métricas. A descoberta e o scraping dessas métricas são realizados por meio de um **ServiceMonitor**, que seleciona o Service da aplicação através de labels.
+
+Essa abordagem elimina a necessidade de annotations como `prometheus.io/scrape`, `prometheus.io/port` e `prometheus.io/path` diretamente nos pods, uma vez que o Prometheus Operator ignora annotations e utiliza exclusivamente os CRDs para definir alvos de scraping.
+
+### Por que não utilizar annotations no Deployment
+
+Embora o uso de annotations seja uma abordagem válida e comum em clusters Prometheus mais simples, ela apresenta limitações em ambientes maiores ou mais maduros:
+
+- Acopla a configuração de observabilidade ao ciclo de vida do Deployment
+- Dificulta a padronização e reutilização de regras de scraping
+- Torna a gestão de métricas menos flexível em ambientes com múltiplos times e serviços
+
+Ao utilizar ServiceMonitor, a configuração de scraping fica desacoplada da aplicação, permitindo ajustes, versionamento e governança independentes, sem necessidade de alterar ou redeployar o workload.
+
+### Benefícios da abordagem adotada
+
+A escolha pelo Prometheus Operator com ServiceMonitor traz benefícios importantes:
+
+- **Escalabilidade:** facilita a gestão de múltiplos serviços e ambientes
+- **Manutenibilidade:** alterações de scraping não exigem mudanças no Deployment
+- **Clareza operacional:** separação explícita entre aplicação, exposição de métricas e observabilidade
+- **Aderência a boas práticas:** modelo amplamente utilizado em ambientes Kubernetes produtivos
+
+### Seleção das Métricas
+
+As métricas implementadas e utilizadas no dashboard foram escolhidas para cobrir os principais sinais dourados de SRE:
+
+- **Throughput:** `http_requests_total` para medir volume de requisições.
+- **Latência:** `http_request_duration_seconds_bucket`, utilizando `histogram_quantile` para cálculo do p95.
+- **Erros:** separação explícita de códigos HTTP 4xx e 5xx, permitindo diferenciar falhas de cliente e servidor.
+- **Recursos:** uso de métricas de CPU e memória por pod para correlacionar consumo de recursos com comportamento da aplicação.
+- **Estabilidade:** monitoramento de restarts de pods e event loop lag do Node.js como indicadores de degradação interna.
+
+Essa combinação permite analisar tanto a perspectiva do usuário quanto a saúde interna da aplicação.
+
+### Design do Dashboard Grafana
+
+O dashboard foi projetado como uma visão geral de saúde da aplicação, concentrando de 4 a 6 painéis principais, conforme solicitado no teste. A organização em seções (HTTP e APP) facilita a leitura e reduz a carga cognitiva durante incidentes.
+
+Foram utilizados thresholds visuais diretamente nos gráficos para destacar estados de atenção (Warning) e críticos (Critical), permitindo identificação rápida de anomalias sem necessidade de análise detalhada dos valores.
+
+As queries foram escritas diretamente em PromQL, priorizando clareza e fácil manutenção, evitando expressões excessivamente complexas.
+
+### Versionamento e Importação do Dashboard
+
+O dashboard foi exportado em formato JSON e versionado no repositório, garantindo reprodutibilidade e alinhamento com práticas de Infrastructure as Code. Para a importação automática no Grafana, foi adotado o uso de ConfigMaps combinados com o sidecar de dashboards.
+
+Essa abordagem garante que:
+- O dashboard seja recriado automaticamente em caso de restart ou recriação do Grafana.
+- O estado do ambiente seja sempre consistente com o código versionado.
+- O projeto seja compatível com fluxos GitOps.
+
+## 🔄 Tarefa 4: Pipeline CI/CD - Decisões Técnicas: CI/CD (GitHub Actions)
 
 A automação do ciclo de vida da aplicação foi implementada via GitHub Actions, focando em garantir a integridade do código e a consistência dos deploys.
 
