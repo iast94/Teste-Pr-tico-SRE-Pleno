@@ -87,10 +87,15 @@ releases:
       - ./helm/elk/kibana-values.yaml
     # Injeta os arquivos JSON como ConfigMaps para o Job ler
     set:
+      # Transforma o JSON do Index Pattern em ConfigMap
       - name: extraConfigMaps.kibana-setup-config.data.index-pattern\.json
         value: {{ readFile "./helm/elk/files/index-pattern.json" | quote }}
+      # Transforma o Dashboard em ConfigMap (Ajuste o caminho se necessário)
       - name: extraConfigMaps.kibana-dashboards-content.data.kibana-dashboard\.ndjson
         value: {{ readFile "./helm/elk/dashboard/kibana-dashboard.json" | quote }}
+      # Transforma a Regra de Alerta em ConfigMap
+      - name: extraConfigMaps.kibana-alerts-config.data.alert-rule\.json
+        value: {{ readFile "helm/elk/files/alert-rule.json" | quote }}
 
   # Tarefa 5: Filebeat (Coleta de Logs via DaemonSet)
   - name: filebeat

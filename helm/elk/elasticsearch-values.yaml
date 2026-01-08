@@ -6,10 +6,10 @@ minimumMasterNodes: 1
 resources:
   requests:
     cpu: "250m"
-    memory: "512Mi"
+    memory: "768Mi"
   limits:
     cpu: "500m"
-    memory: "1Gi"
+    memory: "1.5Gi"
 
 # Persistência de dados dos logs
 persistence:
@@ -26,8 +26,9 @@ livenessProbe:
 
 # Readiness: Garante que o ES está pronto para receber logs
 readinessProbe:
-  initialDelaySeconds: 30
+  initialDelaySeconds: 60 # Aumentado de 30 para dar tempo ao Java de iniciar
   periodSeconds: 10
+  failureThreshold: 10 # Dá mais tentativas antes de desistir
 
 # Startup: Dá tempo para o bootstrap do nó
 startupProbe:
