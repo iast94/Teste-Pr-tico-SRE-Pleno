@@ -66,7 +66,7 @@ releases:
     values:
       - ./helm/elk/elasticsearch-values.yaml
 
-  # Tarefa 5: Logstash (Processamento com o Logstash.conf que criamos)
+  # Tarefa 5: Logstash (Coleta de logs)
   - name: logstash
     namespace: observability
     chart: elastic/logstash
@@ -87,6 +87,9 @@ releases:
       - ./helm/elk/kibana-values.yaml
     # Injeta os arquivos JSON como ConfigMaps para o Job ler
     set:
+      # Força o Helmfile a detectar uma mudança sempre que os arquivos JSON mudarem
+      - name: podAnnotations.config-checksum
+        value: {{ readFile "./helm/elk/files/index-pattern.json" | sha256sum }}
       # Transforma o JSON do Index Pattern em ConfigMap
       - name: extraConfigMaps.kibana-setup-config.data.index-pattern\.json
         value: {{ readFile "./helm/elk/files/index-pattern.json" | quote }}
