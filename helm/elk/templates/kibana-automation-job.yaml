@@ -4,9 +4,12 @@ metadata:
   name: kibana-automation
   namespace: observability
   annotations:
+    # Mantém a execução DEPOIS do deploy
     "helm.sh/hook": post-install,post-upgrade
+    # Garante que espere um pouco, dando tempo para que os hooks nativos de infraestrutura da Elastic finalizem antes da automação tentar se conectar ao Kibana
     "helm.sh/hook-weight": "20"
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # Deleta o job antigo antes de criar o novo, e limpa se falhar
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-failed,hook-succeeded
 spec:
   template:
     spec:

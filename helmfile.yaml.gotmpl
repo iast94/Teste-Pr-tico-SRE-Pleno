@@ -88,6 +88,8 @@ releases:
     version: 8.5.1
     needs:
       - observability/elasticsearch
+    force: true          # Força a substituição de recursos em caso de conflito
+    recreatePods: true   # Reinicia os pods para garantir nova configuração
     values:
       - ./helm/elk/kibana-values.yaml
     # Injeta os arquivos JSON como ConfigMaps para o Job ler
@@ -104,6 +106,17 @@ releases:
       # Transforma a Regra de Alerta em ConfigMap
       - name: extraConfigMaps.kibana-alerts-config.data.alert-rule\.json
         value: {{ readFile "helm/elk/files/alert-rule.json" | quote }}
+    hooks:
+      - events: ["presync"]
+        showlogs: true
+        command: "kubectl"
+        # Isso garante que o Job antigo saia do caminho, mesmo que as annotations do Chart falhem
+        args: ["delete", "job", "kibana-automation-job", "-n", "observability", "--ignore-not-found"]
+      - events: ["presync"]
+        showlogs: true
+        command: "kubectl"
+        # Limpa o Job nativo do Chart que costuma dar erro de "already exists"
+        args: ["delete", "job", "pre-install-kibana-kibana", "-n", "observability", "--ignore-not-found"]
 
   # Tarefa 5: Filebeat (Coleta de Logs via DaemonSet)
   - name: filebeat
