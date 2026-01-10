@@ -4,12 +4,13 @@
 set -e
 
 HELMFILE_VERSION="v1.2.3"
+BIN_PATH="/usr/local/bin/helmfile"
 
-if ! command -v helmfile &> /dev/null; then
+if [ ! -x "$BIN_PATH" ]; then
     echo "Instalando Helmfile ${HELMFILE_VERSION}..."
     
     # Download do binário
-    curl -L "https://github.com/helmfile/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION#v}_linux_amd64.tar.gz" | tar xz
+    curl -L "https://github.com/helmfile/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION#v}_linux_amd64.tar.gz" | tar -xz
     
     # Move para o path do sistema
     sudo mv helmfile /usr/local/bin/
