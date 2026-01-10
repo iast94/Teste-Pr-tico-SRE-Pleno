@@ -228,7 +228,6 @@ permite simular um ambiente de plataforma madura, onde:
 ### 4. Segurança: Usuário Non-Root com ID Fixo
 * **Justificativa do ID 1001:** O uso de um UID/GID fixo acima de 1000 é uma convenção de segurança para garantir que o usuário da aplicação não coincida com usuários do sistema host (como o root, que é ID 0). Além disso, IDs fixos facilitam a gestão de permissões de volumes (RBAC) e políticas de segurança do pod (PodSecurityPolicies) no Kubernetes.
 * **Privilégios Mínimos:** Rodar o processo como non-root impede que, em caso de invasão da aplicação, o atacante obtenha privilégios administrativos sobre o kernel do nó hospedeiro.
-* **ID 1001 vs appuser:** Em vez de apenas usar um nome como appuser, definir explicitamente o UID 1001 é uma boa prática porque muitos sistemas de arquivos e ferramentas de segurança monitoram o ID numérico.
 * **Minimização de Ferramentas:** Ao usar --production, removemos ferramentas de build que poderiam ser exploradas por atacantes dentro do container.
 
 ### 5. Execução: Binário Direto vs Gerenciadores

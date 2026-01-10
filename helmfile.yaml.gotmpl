@@ -49,8 +49,6 @@ releases:
   - name: sre-app
     namespace: sre-test
     chart: ./helm/app
-    needs:
-      - observability/kube-prometheus-stack # App sobe após o monitoramento
     values:
       - ./helm/app/values.yaml
     # Injeta a tag versionada da variável de ambiente
@@ -100,7 +98,7 @@ releases:
       # Transforma o JSON do Index Pattern em ConfigMap
       - name: extraConfigMaps.kibana-setup-config.data.index-pattern\.json
         value: {{ readFile "./helm/elk/files/index-pattern.json" | quote }}
-      # Transforma o Dashboard em ConfigMap (Ajuste o caminho se necessário)
+      # Transforma o Dashboard em ConfigMap 
       - name: extraConfigMaps.kibana-dashboards-content.data.kibana-dashboard\.ndjson
         value: {{ readFile "./helm/elk/dashboard/kibana-dashboard.json" | quote }}
       # Transforma a Regra de Alerta em ConfigMap

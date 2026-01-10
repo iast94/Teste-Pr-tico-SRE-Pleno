@@ -31,7 +31,7 @@ COPY --chown=1001:1001 package.json ./
 COPY --chown=1001:1001 src/ ./src/
 
 # USER numérico para compatibilidade total
-USER 1001
+USER appuser
 
 # Exposição da porta configurável
 EXPOSE ${PORT}
