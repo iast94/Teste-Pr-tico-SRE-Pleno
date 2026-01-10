@@ -36,6 +36,10 @@ startupProbe:
   periodSeconds: 5
   failureThreshold: 20
 
+elasticsearch:
+  username: ${ELASTICSEARCH_USERNAME}
+  password: ${ELASTICSEARCH_PASSWORD}
+
 extraEnvs:
   - name: ELASTICSEARCH_PASSWORD
     valueFrom:
