@@ -42,3 +42,10 @@ esConfig:
 
 secret:
   enabled: false
+
+extraEnvs:
+  - name: ELASTIC_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
