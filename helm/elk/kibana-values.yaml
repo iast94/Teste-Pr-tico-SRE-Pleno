@@ -36,21 +36,4 @@ startupProbe:
   enabled: true
   path: /api/status
   periodSeconds: 5
-  failureThreshold: 20
-
-extraEnvs:
-  - name: ELASTICSEARCH_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: elasticsearch-admin
-        key: password
-
-  - name: ELASTICSEARCH_USERNAME
-    valueFrom:
-      secretKeyRef:
-        name: elasticsearch-admin
-        key: username
-
-elasticsearch:
-  username: ${ELASTICSEARCH_USERNAME}
-  password: ${ELASTICSEARCH_PASSWORD}        
+  failureThreshold: 20       
