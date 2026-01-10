@@ -86,8 +86,6 @@ releases:
     version: 8.5.1
     needs:
       - observability/elasticsearch
-    force: true          # Força a substituição de recursos em caso de conflito
-    recreatePods: true   # Reinicia os pods para garantir nova configuração
     values:
       - ./helm/elk/kibana-values.yaml
     # Injeta os arquivos JSON como ConfigMaps para o Job ler
