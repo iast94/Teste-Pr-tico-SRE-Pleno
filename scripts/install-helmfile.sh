@@ -6,7 +6,7 @@ set -e
 HELMFILE_VERSION="v1.2.3"
 BIN_PATH="/usr/local/bin/helmfile"
 
-if [ ! -x "$BIN_PATH" ]; then
+if [ ! -f "$BIN_PATH" ]; then
     echo "Instalando Helmfile ${HELMFILE_VERSION}..."
     
     # Download do binário
@@ -14,6 +14,7 @@ if [ ! -x "$BIN_PATH" ]; then
     
     # Move para o path do sistema
     sudo mv helmfile /usr/local/bin/
+    chmod 755 "$BIN_PATH"
 
     echo "Helmfile instalado com sucesso!"
 else
