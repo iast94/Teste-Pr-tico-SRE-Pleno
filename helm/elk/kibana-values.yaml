@@ -1,6 +1,3 @@
-# Configura o Job de pré-instalação para usar a senha do Secret
-elasticsearchCredentialSecret: elasticsearch-admin
-
 # Garante o protocolo correto para evitar o erro 401 de handshake
 elasticsearchHosts: "https://elasticsearch-master:9200"
 
@@ -38,3 +35,16 @@ startupProbe:
   path: /api/status
   periodSeconds: 5
   failureThreshold: 20
+
+extraEnvs:
+  - name: ELASTICSEARCH_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-admin
+        key: password
+
+  - name: ELASTICSEARCH_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-admin
+        key: username
