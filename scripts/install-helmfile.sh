@@ -13,7 +13,7 @@ if [ ! -f "$BIN_PATH" ]; then
     curl -L "https://github.com/helmfile/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION#v}_linux_amd64.tar.gz" | tar -xz
     
     # Move para o path do sistema
-    sudo mv helmfile /usr/local/bin/
+    mv helmfile /usr/local/bin/
     chmod 755 "$BIN_PATH"
 
     echo "Helmfile instalado com sucesso!"
