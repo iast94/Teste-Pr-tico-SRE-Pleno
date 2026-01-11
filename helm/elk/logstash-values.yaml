@@ -5,8 +5,8 @@ logstashConfig:
     xpack.monitoring.enabled: false
 
 # Definição do pipeline de processamento de logs da aplicação
-pipelines:
-  main: |
+logstashPipeline:
+  logstash.conf: |
     input {
       beats { port => 5044 }
     }
