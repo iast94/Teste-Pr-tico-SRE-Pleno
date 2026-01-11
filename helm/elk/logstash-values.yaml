@@ -77,3 +77,13 @@ extraEnvs:
       secretKeyRef:
         name: elasticsearch-master-credentials
         key: password
+
+extraVolumes:
+  - name: elastic-ca
+    secret:
+      secretName: elasticsearch-master-certs
+
+extraVolumeMounts:
+  - name: elastic-ca
+    mountPath: /usr/share/logstash/config/certs
+    readOnly: true
