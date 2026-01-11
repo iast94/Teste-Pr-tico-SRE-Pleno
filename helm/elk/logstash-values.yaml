@@ -44,14 +44,25 @@ livenessProbe:
   httpGet:
     path: "/"
     port: 9600
-  initialDelaySeconds: 60
-  periodSeconds: 10
+  initialDelaySeconds: 90
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
 
 readinessProbe:
   httpGet:
     path: "/"
     port: 9600
   initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+startupProbe:
+  httpGet:
+    path: /
+    port: 9600
+  failureThreshold: 30
   periodSeconds: 10
 
 extraEnvs:
