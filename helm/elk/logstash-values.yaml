@@ -14,7 +14,7 @@ logstashPipeline:
       if [kubernetes][container][name] == "my-app" {
         grok {
           match => {
-            "event.original" => "%{TIMESTAMP_ISO8601:log_timestamp} %{LOGLEVEL:level} %{NOTSPACE:endpoint} latency=%{NUMBER:latency:float}ms.*"
+            "event.original" => "%{TIMESTAMP_ISO8601:log_timestamp} %{LOGLEVEL:level} %{NOTSPACE:endpoint} latency=%{NUMBER:latency:float}ms%{GREEDYDATA:rest}"
           }
         }
 
