@@ -18,11 +18,11 @@ daemonset:
 # Recursos para evitar consumo desenfreado no nó
 resources:
   requests:
-    cpu: "100m"
-    memory: "100Mi"
-  limits:
     cpu: "200m"
-    memory: "200Mi"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
 
 # Probes para garantir que o agente de coleta está operando
 livenessProbe:
@@ -31,8 +31,9 @@ livenessProbe:
       - filebeat
       - test
       - output
-  initialDelaySeconds: 30
-  periodSeconds: 10
+  initialDelaySeconds: 60
+  periodSeconds: 20
+  timeoutSeconds: 5
 
 readinessProbe:
   exec:
@@ -40,5 +41,6 @@ readinessProbe:
       - filebeat
       - test
       - output
-  initialDelaySeconds: 10
-  periodSeconds: 5
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
